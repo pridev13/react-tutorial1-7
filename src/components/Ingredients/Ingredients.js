@@ -20,6 +20,20 @@ const Ingredients = () => {
 
   }
 
+  const removeIngHandler = (id) => {
+
+    setIngs((prevState) => {
+
+      return prevState.filter((ing) => {
+
+        return ing.id !== id;
+
+      });
+
+    });
+
+  }
+
   return (
     <div className="App">
       <IngredientForm onAddIng={addIngHandler} />
@@ -28,7 +42,7 @@ const Ingredients = () => {
         <Search />
         <IngredientList
           ingredients={ings}
-          onRemoveItem={() => { }}
+          onRemoveItem={removeIngHandler}
         />
       </section>
     </div>
