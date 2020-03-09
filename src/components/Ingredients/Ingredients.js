@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 import IngredientForm from './IngredientForm';
 import IngredientList from './IngredientList';
@@ -8,15 +8,36 @@ const Ingredients = () => {
 
   const [ings, setIngs] = useState([]);
 
+  useEffect(() => {
+    console.log('Ingredients updated')
+  }, [ings]);
+
+  const onFilterHandler = useCallback((ings) => {
+    setIngs(ings);
+  }, []);
+
   const addIngHandler = (ing) => {
 
-    setIngs((prevState) => [
-      ...prevState,
-      {
-        id: Math.random().toString(),
-        ...ing
-      }
-    ]);
+    fetch('https://reacthooks-9fbff.firebaseio.com/ingredients.json', {
+      method: 'POST',
+      body: JSON.stringify(ing),
+      headers: { 'Content-Type': 'application/json' }
+    })
+      .then((res) => {
+        return res.json();
+      })
+      .then((res) => {
+
+        setIngs((prevState) => [
+          ...prevState,
+          {
+            id: res.name,
+            ...ing
+          }
+        ]);
+
+      });
+
 
   }
 
@@ -24,11 +45,7 @@ const Ingredients = () => {
 
     setIngs((prevState) => {
 
-      return prevState.filter((ing) => {
-
-        return ing.id !== id;
-
-      });
+      return prevState.filter((ing) => ing.id !== id);
 
     });
 
@@ -39,7 +56,7 @@ const Ingredients = () => {
       <IngredientForm onAddIng={addIngHandler} />
 
       <section>
-        <Search />
+        <Search onFilterIngs={onFilterHandler} />
         <IngredientList
           ingredients={ings}
           onRemoveItem={removeIngHandler}
