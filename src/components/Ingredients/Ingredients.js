@@ -30,6 +30,8 @@ const httpReducer = (cState, action) => {
       return { loading: false, error: null };
     case 'ERROR':
       return { loading: false, error: action.error };
+    case 'CLEAR':
+      return { ...cState, error: null };
     default:
       throw new Error('Should not get here');
   }
@@ -129,9 +131,9 @@ const Ingredients = () => {
   const clearError = () => {
 
     httpDispatch({
-      type: 'RES'
+      type: 'CLEAR'
     });
-    
+
   }
 
   return (
