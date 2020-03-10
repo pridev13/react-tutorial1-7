@@ -1,10 +1,11 @@
-import React, { useReducer, useEffect, useCallback } from 'react';
+import React, { useReducer, useEffect, useCallback, useMemo } from 'react';
 
 import IngredientForm from './IngredientForm';
 import IngredientList from './IngredientList';
 import ErrorModal from '../UI/ErrorModal';
 
 import Search from './Search';
+import useHTTP from '../../hooks/http';
 
 const ingReducer = (cState, action) => {
 
@@ -21,31 +22,32 @@ const ingReducer = (cState, action) => {
 
 }
 
-const httpReducer = (cState, action) => {
-
-  switch (action.type) {
-    case 'SEND':
-      return { loading: true, error: null };
-    case 'RES':
-      return { loading: false, error: null };
-    case 'ERROR':
-      return { loading: false, error: action.error };
-    case 'CLEAR':
-      return { ...cState, error: null };
-    default:
-      throw new Error('Should not get here');
-  }
-
-}
-
 const Ingredients = () => {
 
   const [ings, dispatch] = useReducer(ingReducer, []);
-  const [http, httpDispatch] = useReducer(httpReducer, { loading: false, error: null });
+  const { loading, error, data, sendReq, extra, reqID, clear } = useHTTP();
 
   useEffect(() => {
-    console.log('Ingredients updated')
-  }, [ings]);
+
+    if (!loading && !error && reqID === 'DEL_ING') {
+      dispatch({
+        type: 'DEL_ING',
+        id: extra
+      });
+    }
+    else if (!loading && !error && reqID === 'ADD_ING') {
+
+      dispatch({
+        type: 'ADD_ING',
+        ing: {
+          id: data.name,
+          ...extra
+        }
+      });
+
+    }
+
+  }, [data, extra, reqID, loading, error]);
 
   const onFilterHandler = useCallback((ings) => {
 
@@ -56,102 +58,51 @@ const Ingredients = () => {
 
   }, []);
 
-  const addIngHandler = (ing) => {
+  const addIngHandler = useCallback((ing) => {
 
-    httpDispatch({
-      type: 'SEND'
-    });
+    sendReq(
+      'https://reacthooks-9fbff.firebaseio.com/ingredients.json',
+      'POST',
+      JSON.stringify(ing),
+      ing,
+      'ADD_ING'
+    );
 
-    fetch('https://reacthooks-9fbff.firebaseio.com/ingredients.json', {
-      method: 'POST',
-      body: JSON.stringify(ing),
-      headers: { 'Content-Type': 'application/json' }
-    })
-      .then((res) => {
+  }, [sendReq]);
 
-        httpDispatch({
-          type: 'RES'
-        });
+  const removeIngHandler = useCallback((id) => {
 
-        return res.json();
+    sendReq(
+      `https://reacthooks-9fbff.firebaseio.com/ingredients/${id}.json`,
+      'DELETE',
+      null,
+      id,
+      'DEL_ING'
+    );
 
-      })
-      .then((res) => {
+  }, [sendReq]);
 
-        dispatch({
-          type: 'ADD_ING',
-          ing: {
-            id: res.name,
-            ...ing
-          }
-        });
-
-      })
-      .catch((err) => {
-
-        httpDispatch({
-          type: 'ERROR',
-          error: err.message
-        });
-
-      });
-
-  }
-
-  const removeIngHandler = (id) => {
-
-    httpDispatch({
-      type: 'SEND'
-    });
-
-    fetch(`https://reacthooks-9fbff.firebaseio.com/ingredients/${id}.json`, {
-      method: 'DELETE'
-    })
-      .then((res) => {
-
-        httpDispatch({
-          type: 'RES'
-        });
-
-        dispatch({
-          type: 'DEL_ING',
-          id: id
-        });
-
-      })
-      .catch((err) => {
-        httpDispatch({
-          type: 'ERROR',
-          error: err.message
-        });
-      });
-
-  }
-
-  const clearError = () => {
-
-    httpDispatch({
-      type: 'CLEAR'
-    });
-
-  }
+  const ingList = useMemo(() => {
+    return (<IngredientList
+      ingredients={ings}
+      onRemoveItem={removeIngHandler}
+    />
+    )
+  }, [ings, removeIngHandler]);
 
   return (
     <div className="App">
 
-      {http.error && <ErrorModal onClose={clearError}>{http.error}</ErrorModal>}
+      {error && <ErrorModal onClose={clear}>{error}</ErrorModal>}
 
       <IngredientForm
         onAddIng={addIngHandler}
-        loading={http.loading}
+        loading={loading}
       />
 
       <section>
         <Search onFilterIngs={onFilterHandler} />
-        <IngredientList
-          ingredients={ings}
-          onRemoveItem={removeIngHandler}
-        />
+        {ingList}
       </section>
     </div>
   );
